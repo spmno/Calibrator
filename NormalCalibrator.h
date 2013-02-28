@@ -4,6 +4,12 @@
 
 #define Z0 150
 
+typedef struct CalibratePoint_
+{
+	unsigned short x;
+	unsigned short y;
+}CalibratePoint;
+
 template<int PIXEL>
 class NormalCalibrator
 {
@@ -78,7 +84,7 @@ class RectCalibrator
 	RectCalibrator(void)
 	{
 		convertBuffer_ = new DWORD[WIDTH*HEIGHT];
-		findTable_ = new POINT[WIDTH*HEIGHT];
+		findTable_ = new CalibratePoint[WIDTH*HEIGHT];
 		setZValue(Z0);
 	}
 	~RectCalibrator(void)
@@ -104,6 +110,53 @@ class RectCalibrator
 		return convertBuffer_;
 	}
 
+	void calibratePhysical(u32 originalImage, u32 convertImage)
+	{
+		DWORD* convertTemp = (DWORD*)MEM_PHY_TO_VIR(convertImage);
+		DWORD* originalTemp = (DWORD*)MEM_PHY_TO_VIR(originalImage);
+		
+		for(int j=0; j<HEIGHT; ++j)
+			for( int i=0; i<WIDTH;++i)
+			{
+				convertTemp[j*WIDTH+i] = *(originalTemp+(findTable_[j*WIDTH+i].y*WIDTH+findTable_[j*WIDTH+i].x));
+			}
+	}
+
+	void calibratePhysicalArray(u32 originalImageArray[], u32 convertImageArray[])
+	{
+		DWORD* convertTemp0 = (DWORD*)MEM_PHY_TO_VIR(convertImageArray[0]);
+		DWORD* originalTemp0 = (DWORD*)MEM_PHY_TO_VIR(originalImageArray[0]);
+		DWORD* convertTemp1 = (DWORD*)MEM_PHY_TO_VIR(convertImageArray[1]);
+		DWORD* originalTemp1 = (DWORD*)MEM_PHY_TO_VIR(originalImageArray[1]);
+		DWORD* convertTemp2 = (DWORD*)MEM_PHY_TO_VIR(convertImageArray[2]);
+		DWORD* originalTemp2 = (DWORD*)MEM_PHY_TO_VIR(originalImageArray[2]);
+		DWORD* convertTemp3 = (DWORD*)MEM_PHY_TO_VIR(convertImageArray[3]);
+		DWORD* originalTemp3 = (DWORD*)MEM_PHY_TO_VIR(originalImageArray[3]);
+
+		register originalPosition = 0;
+		register convertPosition = 0;
+#if 1
+		for(int j=0; j<HEIGHT; ++j)
+			for( int i=0; i<WIDTH;++i)
+			{
+				convertPosition = findTable_[originalPosition].y*WIDTH+findTable_[originalPosition].x;
+				*(convertTemp0+originalPosition) = *(originalTemp0+convertPosition);
+				*(convertTemp1+originalPosition) = *(originalTemp1+convertPosition);
+				*(convertTemp2+originalPosition) = *(originalTemp2+convertPosition);
+				*(convertTemp3+originalPosition) = *(originalTemp3+convertPosition);
+				++originalPosition;
+			}
+#else
+		for (int i = 0; i < HEIGHT*WIDTH; ++i) {
+			originalPosition = i;
+			convertPosition = findTable_[i].y*WIDTH+findTable_[i].x;
+			*(convertTemp0+originalPosition) = *(originalTemp0+convertPosition);
+			*(convertTemp1+originalPosition) = *(originalTemp1+convertPosition);
+			*(convertTemp2+originalPosition) = *(originalTemp2+convertPosition);
+			*(convertTemp3+originalPosition) = *(originalTemp3+convertPosition);
+		}
+#endif
+	}
 	void setZValue(DWORD zValue)
 	{
 		int PIXEL = WIDTH;
@@ -146,5 +199,5 @@ class RectCalibrator
 	}
 private:
 	DWORD* convertBuffer_;
-	POINT* findTable_;
+	CalibratePoint* findTable_;
 };
